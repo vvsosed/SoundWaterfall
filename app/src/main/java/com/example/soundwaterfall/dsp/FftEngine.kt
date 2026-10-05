@@ -16,8 +16,9 @@ interface FftEngine {
     val binCount: Int
 
     /**
-     * Transforms [work] in place — its contents are destroyed — and writes
-     * [binCount] raw, un-normalized magnitudes into [out].
+     * Reads [work] and writes [binCount] raw, un-normalized magnitudes into
+     * [out]. Implementations may destroy [work]'s contents, so callers must
+     * refill it before every call rather than reusing its values.
      *
      * Allocates nothing: both arrays are supplied by the caller.
      *

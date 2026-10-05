@@ -7,7 +7,7 @@ import kotlin.math.cos
 
 class FftEngineTest {
 
-    private fun engine(size: Int): FftEngine = JTransformsFftEngine(size)
+    private fun engine(size: Int): FftEngine = Radix2FftEngine(size)
 
     @Test
     fun binCountIsHalfSizePlusOne() {

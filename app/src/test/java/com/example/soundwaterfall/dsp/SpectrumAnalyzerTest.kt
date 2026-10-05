@@ -13,7 +13,7 @@ class SpectrumAnalyzerTest {
         fftSize: Int,
         window: WindowFunction,
         dbFloor: Float = -90f,
-    ) = SpectrumAnalyzer(JTransformsFftEngine(fftSize), window, dbFloor)
+    ) = SpectrumAnalyzer(Radix2FftEngine(fftSize), window, dbFloor)
 
     /** Full-scale cosine at an exact bin centre, as 16-bit PCM. */
     private fun cosineFrame(fftSize: Int, bin: Double): ShortArray =
