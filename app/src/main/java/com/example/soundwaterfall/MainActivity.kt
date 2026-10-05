@@ -19,6 +19,7 @@ import com.example.soundwaterfall.dsp.FrequencyScale
 import com.example.soundwaterfall.dsp.SpectrumSnapshot
 import com.example.soundwaterfall.dsp.WindowFunction
 import com.example.soundwaterfall.ui.WaterfallView
+import com.google.android.material.slider.Slider
 
 class MainActivity : AppCompatActivity(), AnalyzerEngine.Sink {
 
@@ -67,6 +68,7 @@ class MainActivity : AppCompatActivity(), AnalyzerEngine.Sink {
             )
         }
         applySettingsLocally(settings)
+        wireControls()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -110,6 +112,75 @@ class MainActivity : AppCompatActivity(), AnalyzerEngine.Sink {
     private fun applySettingsLocally(next: AnalyzerSettings) {
         dbFloor = next.dbFloor
         binding.spectrum.dbFloor = next.dbFloor
+    }
+
+    /**
+     * `isChecked` guards every listener: MaterialButtonToggleGroup fires for the
+     * button being cleared as well as the one being checked, and syncControls()
+     * programmatically checks buttons, which would otherwise feed back.
+     */
+    private fun wireControls() {
+        syncControls()
+
+        binding.fftSizeGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            val size = when (checkedId) {
+                R.id.fft1024 -> 1024
+                R.id.fft4096 -> 4096
+                else -> 2048
+            }
+            if (size != settings.fftSize) updateSettings(settings.copy(fftSize = size))
+        }
+
+        binding.windowGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            val window = when (checkedId) {
+                R.id.windowRect -> WindowFunction.RECTANGULAR
+                R.id.windowHamming -> WindowFunction.HAMMING
+                R.id.windowBlackman -> WindowFunction.BLACKMAN
+                else -> WindowFunction.HANN
+            }
+            if (window != settings.window) updateSettings(settings.copy(window = window))
+        }
+
+        // The label follows the thumb, but the setting is applied on release:
+        // every floor change clears the waterfall (spec §6.5), and doing that on
+        // each step of a drag would be unusable.
+        binding.dbFloorSlider.addOnChangeListener { _, value, _ ->
+            binding.dbFloorValue.text = getString(R.string.db_floor_format, value.toInt())
+        }
+        binding.dbFloorSlider.addOnSliderTouchListener(
+            object : Slider.OnSliderTouchListener {
+                override fun onStartTrackingTouch(slider: Slider) = Unit
+
+                override fun onStopTrackingTouch(slider: Slider) {
+                    val floor = slider.value
+                    if (floor != settings.dbFloor) updateSettings(settings.copy(dbFloor = floor))
+                }
+            }
+        )
+    }
+
+    /** Reflects [settings] into the controls, e.g. after a rotation. */
+    private fun syncControls() {
+        binding.fftSizeGroup.check(
+            when (settings.fftSize) {
+                1024 -> R.id.fft1024
+                4096 -> R.id.fft4096
+                else -> R.id.fft2048
+            }
+        )
+        binding.windowGroup.check(
+            when (settings.window) {
+                WindowFunction.RECTANGULAR -> R.id.windowRect
+                WindowFunction.HANN -> R.id.windowHann
+                WindowFunction.HAMMING -> R.id.windowHamming
+                WindowFunction.BLACKMAN -> R.id.windowBlackman
+            }
+        )
+        binding.dbFloorSlider.value = settings.dbFloor
+        binding.dbFloorValue.text =
+            getString(R.string.db_floor_format, settings.dbFloor.toInt())
     }
 
     // --- capture lifecycle ---------------------------------------------------

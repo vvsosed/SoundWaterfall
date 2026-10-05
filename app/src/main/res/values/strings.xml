@@ -8,4 +8,12 @@
     <string name="permission_settings">Open settings</string>
     <string name="error_title">Microphone unavailable</string>
     <string name="error_retry">Retry</string>
+    <string name="label_fft">FFT</string>
+    <string name="label_window">Window</string>
+    <string name="label_floor">Floor</string>
+    <string name="window_rectangular">Rect</string>
+    <string name="window_hann">Hann</string>
+    <string name="window_hamming">Hamm</string>
+    <string name="window_blackman">Black</string>
+    <string name="db_floor_format">%d dB</string>
 </resources>

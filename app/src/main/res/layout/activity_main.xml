@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/chart_background">
@@ -65,11 +66,180 @@
             android:layout_width="match_parent"
             android:layout_height="18dp" />
 
-        <!-- Task 13 inserts the control strip here. -->
-        <FrameLayout
-            android:id="@+id/controlContainer"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:background="@color/app_bar_background"
+            android:orientation="vertical"
+            android:paddingLeft="10dp"
+            android:paddingTop="6dp"
+            android:paddingRight="10dp"
+            android:paddingBottom="6dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="52dp"
+                    android:layout_height="wrap_content"
+                    android:text="@string/label_fft"
+                    android:textColor="@color/chart_label"
+                    android:textSize="11sp" />
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/fftSizeGroup"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    app:selectionRequired="true"
+                    app:singleSelection="true">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/fft1024"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingLeft="0dp"
+                        android:paddingRight="0dp"
+                        android:text="1024"
+                        android:textSize="11sp" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/fft2048"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingLeft="0dp"
+                        android:paddingRight="0dp"
+                        android:text="2048"
+                        android:textSize="11sp" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/fft4096"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingLeft="0dp"
+                        android:paddingRight="0dp"
+                        android:text="4096"
+                        android:textSize="11sp" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="52dp"
+                    android:layout_height="wrap_content"
+                    android:text="@string/label_window"
+                    android:textColor="@color/chart_label"
+                    android:textSize="11sp" />
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/windowGroup"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    app:selectionRequired="true"
+                    app:singleSelection="true">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/windowRect"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingLeft="0dp"
+                        android:paddingRight="0dp"
+                        android:text="@string/window_rectangular"
+                        android:textSize="10sp" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/windowHann"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingLeft="0dp"
+                        android:paddingRight="0dp"
+                        android:text="@string/window_hann"
+                        android:textSize="10sp" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/windowHamming"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingLeft="0dp"
+                        android:paddingRight="0dp"
+                        android:text="@string/window_hamming"
+                        android:textSize="10sp" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/windowBlackman"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="36dp"
+                        android:layout_weight="1"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:paddingLeft="0dp"
+                        android:paddingRight="0dp"
+                        android:text="@string/window_blackman"
+                        android:textSize="10sp" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="52dp"
+                    android:layout_height="wrap_content"
+                    android:text="@string/label_floor"
+                    android:textColor="@color/chart_label"
+                    android:textSize="11sp" />
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/dbFloorSlider"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:stepSize="10"
+                    android:valueFrom="-120"
+                    android:valueTo="-40" />
+
+                <TextView
+                    android:id="@+id/dbFloorValue"
+                    android:layout_width="56dp"
+                    android:layout_height="wrap_content"
+                    android:gravity="end"
+                    android:textColor="@color/chart_label"
+                    android:textSize="11sp" />
+            </LinearLayout>
+        </LinearLayout>
     </LinearLayout>
 
     <!-- Covers the charts whenever there is nothing to show: permission or error. -->
