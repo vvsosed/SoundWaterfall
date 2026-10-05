@@ -13,4 +13,11 @@
     <color name="chart_label">#FF76859A</color>
     <color name="spectrum_trace">#FF5BB8E8</color>
     <color name="spectrum_fill">#385BB8E8</color>
+    <color name="app_bar_background">#FF141A22</color>
+    <color name="app_bar_text">#FFAAB6C6</color>
+    <color name="source_chip_text">#FF7EC98A</color>
+    <color name="source_chip_background">#FF1D2A1F</color>
+    <color name="panel_scrim">#F2080C11</color>
+    <color name="panel_text">#FFD6E3F0</color>
+    <color name="panel_body_text">#FF8F9AA8</color>
 </resources>

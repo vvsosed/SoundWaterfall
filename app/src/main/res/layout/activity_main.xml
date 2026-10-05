@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/chart_background">
+
+    <LinearLayout
+        android:id="@+id/content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- App bar: name plus the audio source that actually won the chain. -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/app_bar_background"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingLeft="12dp"
+            android:paddingTop="8dp"
+            android:paddingRight="12dp"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/app_name"
+                android:textColor="@color/app_bar_text"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/sourceChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@color/source_chip_background"
+                android:paddingLeft="8dp"
+                android:paddingTop="2dp"
+                android:paddingRight="8dp"
+                android:paddingBottom="2dp"
+                android:text="@string/source_unknown"
+                android:textColor="@color/source_chip_text"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- Spectrum, 34% of the remaining height. -->
+        <com.example.soundwaterfall.ui.SpectrumView
+            android:id="@+id/spectrum"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="34" />
+
+        <!-- Waterfall, 40%, welded directly to the spectrum with no separator so
+             the newest row touches it (layout C). -->
+        <com.example.soundwaterfall.ui.WaterfallView
+            android:id="@+id/waterfall"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="40" />
+
+        <!-- The single shared frequency scale, below both charts. -->
+        <com.example.soundwaterfall.ui.FrequencyAxisView
+            android:id="@+id/frequencyAxis"
+            android:layout_width="match_parent"
+            android:layout_height="18dp" />
+
+        <!-- Task 13 inserts the control strip here. -->
+        <FrameLayout
+            android:id="@+id/controlContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </LinearLayout>
+
+    <!-- Covers the charts whenever there is nothing to show: permission or error. -->
+    <LinearLayout
+        android:id="@+id/panel"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/panel_scrim"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:paddingLeft="32dp"
+        android:paddingRight="32dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/panelTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/panel_text"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/panelBody"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:gravity="center"
+            android:textColor="@color/panel_body_text"
+            android:textSize="13sp" />
+
+        <Button
+            android:id="@+id/panelAction"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp" />
+    </LinearLayout>
+</FrameLayout>

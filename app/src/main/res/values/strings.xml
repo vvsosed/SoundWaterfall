@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">SoundWaterfall</string>
+    <string name="source_unknown">starting…</string>
+    <string name="source_format">%1$s · %2$d Hz</string>
+    <string name="permission_title">Microphone access needed</string>
+    <string name="permission_body">SoundWaterfall analyses live audio, so it needs permission to use the microphone. Nothing is recorded or saved.</string>
+    <string name="permission_grant">Grant access</string>
+    <string name="permission_settings">Open settings</string>
+    <string name="error_title">Microphone unavailable</string>
+    <string name="error_retry">Retry</string>
 </resources>

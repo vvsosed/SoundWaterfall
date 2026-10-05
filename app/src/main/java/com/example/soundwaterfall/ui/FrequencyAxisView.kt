@@ -50,22 +50,30 @@ class FrequencyAxisView @JvmOverloads constructor(
         val tickHeight = h * 0.3f
         val baseline = h * 0.82f
 
+        // The unit sits hard against the right edge, so the gridline labels must
+        // not run into it — at 48 kHz the Nyquist label lands exactly there.
+        val hz = "Hz"
+        val hzWidth = labelPaint.measureText(hz)
+        val labelLimit = (w - hzWidth - UNIT_GAP * resources.displayMetrics.density)
+            .coerceAtLeast(0f)
+
         for (f in freq.gridlineFrequencies(GRID_STEP_HZ)) {
             val x = freq.xOf(f.toFloat(), w)
             canvas.drawLine(x, 0f, x, tickHeight, tickPaint)
 
             val label = AxisLabels.format(f)
             val textWidth = labelPaint.measureText(label)
-            // Keep the first and last labels inside the view.
-            val tx = (x - textWidth / 2f).coerceIn(0f, (w - textWidth).coerceAtLeast(0f))
+            // Keep the first and last labels inside the view, clear of the unit.
+            val tx = (x - textWidth / 2f)
+                .coerceIn(0f, (labelLimit - textWidth).coerceAtLeast(0f))
             canvas.drawText(label, tx, baseline, labelPaint)
         }
 
-        val hz = "Hz"
-        canvas.drawText(hz, w - labelPaint.measureText(hz) - 1f, labelPaint.textSize, labelPaint)
+        canvas.drawText(hz, w - hzWidth - 1f, baseline, labelPaint)
     }
 
     private companion object {
         const val GRID_STEP_HZ = 4000
+        const val UNIT_GAP = 4f
     }
 }
