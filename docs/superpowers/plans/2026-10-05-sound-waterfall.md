@@ -36,7 +36,9 @@ Five conditions the spec implies that no task's happy-path tests would exercise.
 
 ---
 
-### Task 0: De-risk JTransforms on Android (throwaway)
+### Task 0: De-risk JTransforms on Android — RESULT: confirmed
+
+**Result:** PASS on the Lenovo A6010, Android 5.0.2 / **API 21** (`tests="1" failures="0" errors="0"`); JTransforms dexes, class-loads and computes correctly, with the peak at bin 43 and 0 dBFS as predicted. Also PASS on the host JVM (OpenJDK 25). **API 28+ enforcement was NOT tested on-device** — see the ruling in Step 5. Decision: proceed with JTransforms; `JTransformsFftEngine` requires `DoubleFFT_1D(size.toLong())` because the constructor takes a `long`.
 
 Spec §11. This task writes **no production code**. It answers one question — does JTransforms run on Android — and its artifacts are deleted at the end.
 
@@ -167,6 +169,14 @@ adb -s emulator-5554 shell settings delete global hidden_api_policy
 ```
 
 Expected: PASS. `sun.misc.Unsafe` sits on Android's *unsupported* (greylist) rather than the blocklist, so this is expected to succeed — but it is cheap to confirm and expensive to discover later.
+
+**RULING (not executed): deferred to Task 14.** Instead of installing a ~2 GB system image, the failure mechanism was characterized from the bytecode, which is more informative than one pass/fail:
+
+- `LargeArray.<clinit>` is harmless — it sets a single int field and never touches `Unsafe`. The plan's original fear was aimed at the wrong class.
+- `LargeArrayUtils.<clinit>` is the real risk point: `Class.forName("sun.misc.Unsafe")` → `getDeclaredField("theUnsafe")` → `setAccessible(true)` → `get(null)`, catching `ClassNotFoundException`, `IllegalAccessException`, `IllegalArgumentException`, `NoSuchFieldException` and `SecurityException`, then throwing `java.lang.Error("Could not obtain access to sun.misc.Unsafe")` if the result is null.
+- Android signals a blocked hidden-API field by throwing `NoSuchFieldException` — which that code catches — so a blocklisting of `theUnsafe` would surface as `ExceptionInInitializerError` on the first FFT.
+
+Deferred because `theUnsafe` is greylisted (accessible with a log warning, not blocked) and is depended on across the JVM ecosystem; because the only available device is API 21, where no enforcement exists at all; and because installing a system image is a large unrequested change to the user's SDK. Containment is by construction: swapping `FftEngine` is a one-class change and every Task 3 test stays as written.
 
 - [ ] **Step 6: Record the decision in this file**
 
