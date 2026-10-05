@@ -1,6 +1,7 @@
 package com.example.soundwaterfall.dsp
 
 import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -82,6 +83,22 @@ class SpectrumSnapshotTest {
         producer.start(); consumer.start()
         producer.join(10_000); consumer.join(10_000)
         failure?.let { throw it }
+    }
+
+    /**
+     * The renderer skips a vsync when no new frame has been published. At
+     * N=4096 the analysis runs at 23 Hz against a 60 Hz vsync, so without this
+     * roughly 60% of spectrum redraws would redraw identical data.
+     */
+    @Test
+    fun publishCountLetsTheRendererSkipUnchangedFrames() {
+        val snap = SpectrumSnapshot(2)
+        assertEquals(0L, snap.publishCount)
+        snap.publish(floatArrayOf(1f, 2f))
+        assertEquals(1L, snap.publishCount)
+        snap.publish(floatArrayOf(3f, 4f))
+        snap.publish(floatArrayOf(5f, 6f))
+        assertEquals(3L, snap.publishCount)
     }
 
     @Test(expected = IllegalArgumentException::class)

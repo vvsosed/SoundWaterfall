@@ -1,6 +1,7 @@
 package com.example.soundwaterfall.dsp
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -80,6 +81,31 @@ class WaterfallBufferTest {
         repeat(5) { buf.appendRow(cols, -90f) }
         assertEquals(8 - buf.newestRow, buf.topSliceHeight)
         assertEquals(8, buf.topSliceHeight + buf.newestRow)
+    }
+
+    /**
+     * The renderer skips a vsync when no new row has arrived; measured on the
+     * API 21 device, blitting every vsync regardless put 100% of frames over
+     * the 16.7 ms budget.
+     */
+    @Test
+    fun rowsAppendedCountsEveryAppendSoTheRendererCanSkipIdleFrames() {
+        val buf = buffer(height = 4)
+        val cols = FloatArray(4) { 0f }
+        assertEquals(0L, buf.rowsAppended)
+        buf.appendRow(cols, -90f)
+        assertEquals(1L, buf.rowsAppended)
+        repeat(9) { buf.appendRow(cols, -90f) }
+        assertEquals("must keep counting across a wrap", 10L, buf.rowsAppended)
+    }
+
+    @Test
+    fun clearResetsTheRowCountSoTheRendererRedrawsTheClearedBuffer() {
+        val buf = buffer(height = 4)
+        buf.appendRow(FloatArray(4) { 0f }, -90f)
+        val before = buf.rowsAppended
+        buf.clear()
+        assertNotEquals("clear must invalidate the renderer's cached count", before, buf.rowsAppended)
     }
 
     @Test

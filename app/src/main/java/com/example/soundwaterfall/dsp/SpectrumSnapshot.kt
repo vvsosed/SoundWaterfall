@@ -42,6 +42,15 @@ class SpectrumSnapshot(val binCount: Int) {
     private var writeIndex = 0
 
     /**
+     * Monotonic count of published frames, so the renderer can skip a vsync when
+     * nothing new has arrived. At N=4096 the analysis runs at 23 Hz against a
+     * 60 Hz vsync, so most redraws would otherwise redraw identical data.
+     */
+    @Volatile
+    var publishCount: Long = 0
+        private set
+
+    /**
      * Called on the audio thread. There is exactly one producer, so the
      * non-atomic increments of [seq] are safe.
      */
@@ -55,6 +64,7 @@ class SpectrumSnapshot(val binCount: Int) {
         frontIndex = target
         writeIndex = 1 - target
         seq++                                   // even: the buffer is stable again
+        publishCount++
     }
 
     /**

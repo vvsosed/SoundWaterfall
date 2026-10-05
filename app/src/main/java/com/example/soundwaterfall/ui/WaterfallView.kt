@@ -40,7 +40,25 @@ class WaterfallView @JvmOverloads constructor(
 
     private var bitmap: Bitmap? = null
 
+    /** Row count at the last requested redraw; -1 forces the first one. */
+    private var lastDrawnRowCount = -1L
+
+    /** Row count at the last bitmap upload; -1 forces a full upload. */
+    private var uploadedRowCount = -1L
+
+    /**
+     * Called once per vsync. Skips the invalidate entirely when no new row has
+     * arrived — at N=4096 the analysis produces 23 rows/s against a 60 Hz
+     * vsync, so most redraws would re-upload an unchanged 1.35 MB bitmap.
+     *
+     * The check belongs here and not in [onDraw]: returning early from onDraw
+     * would leave the view's display list empty and blank the waterfall.
+     */
     fun refresh() {
+        val t = target ?: return
+        val rows = t.buffer.rowsAppended
+        if (rows == lastDrawnRowCount) return
+        lastDrawnRowCount = rows
         invalidate()
     }
 
@@ -74,6 +92,8 @@ class WaterfallView @JvmOverloads constructor(
         bitmap?.recycle()
         bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         target = Target(WaterfallBuffer(w, h, colorMap), FloatArray(w))
+        lastDrawnRowCount = -1L
+        uploadedRowCount = -1L
     }
 
     override fun onDetachedFromWindow() {
@@ -96,7 +116,22 @@ class WaterfallView @JvmOverloads constructor(
         val newest = buffer.newestRow
         val topHeight = h - newest
 
-        bmp.setPixels(buffer.pixels, 0, w, 0, 0, w, h)
+        // Upload only the rows that changed. A full 720x470 upload is ~1.35 MB;
+        // at 47 rows/s only a handful of rows are new per draw.
+        val rows = buffer.rowsAppended
+        val added = rows - uploadedRowCount
+        if (uploadedRowCount < 0L || added < 0L || added >= h) {
+            bmp.setPixels(buffer.pixels, 0, w, 0, 0, w, h)
+        } else if (added > 0L) {
+            // Rows are written with a DECREASING index, so the new ones occupy
+            // newest, newest+1, ... newest+added-1, wrapping once at the end.
+            val span = added.toInt()
+            val head = minOf(span, h - newest)
+            bmp.setPixels(buffer.pixels, newest * w, w, 0, newest, w, head)
+            val tail = span - head
+            if (tail > 0) bmp.setPixels(buffer.pixels, 0, w, 0, 0, w, tail)
+        }
+        uploadedRowCount = rows
 
         if (topHeight > 0) {
             srcRect.set(0, newest, w, h)
