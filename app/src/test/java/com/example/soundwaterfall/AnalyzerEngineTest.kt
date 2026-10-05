@@ -26,6 +26,7 @@ class AnalyzerEngineTest {
         private val fftSize: Int = 2048,
         private val errorAfter: Int = -1,
         private val emptyForever: Boolean = false,
+        private val throwAfter: Int = -1,
     ) : SampleSource {
         private var phase = 0
         val reads = AtomicInteger(0)
@@ -35,6 +36,7 @@ class AnalyzerEngineTest {
 
         override fun read(dest: ShortArray): Int {
             val n = reads.incrementAndGet()
+            if (throwAfter in 1..n) throw IllegalStateException("simulated AudioRecord failure")
             if (errorAfter in 1..n) return -3
             if (emptyForever) return 0
             for (i in dest.indices) {
@@ -219,6 +221,27 @@ class AnalyzerEngineTest {
 
         assertEquals("frame length disagreed with its scale", 0, mismatches.get())
         assertEquals("engine must not have errored", null, sink.error.get())
+    }
+
+    /**
+     * Spec §8 defines a user-visible error path for every failure it lists. An
+     * uncaught throw on the audio thread bypasses it and kills the process, so
+     * the user gets a crash dialog instead of the Retry panel.
+     */
+    @Test
+    fun aThrowOnTheAudioThreadIsReportedInsteadOfKillingTheProcess() {
+        val sink = RecordingSink()
+        val source = FakeSource(throwAfter = 3)
+        val e = engine(source, sink)
+        e.start()
+        waitUntil { sink.error.get() != null }
+        e.stop()
+
+        assertTrue(
+            "error must name the cause, was ${sink.error.get()}",
+            sink.error.get()!!.contains("simulated AudioRecord failure"),
+        )
+        assertTrue("the source must still be closed", source.closed)
     }
 
     @Test

@@ -17,8 +17,9 @@ interface FftEngine {
 
     /**
      * Reads [work] and writes [binCount] raw, un-normalized magnitudes into
-     * [out]. Implementations may destroy [work]'s contents, so callers must
-     * refill it before every call rather than reusing its values.
+     * [out]. Implementations are permitted to destroy [work]'s contents — the
+     * current one does not, but callers must refill it before every call rather
+     * than relying on that.
      *
      * Allocates nothing: both arrays are supplied by the caller.
      *

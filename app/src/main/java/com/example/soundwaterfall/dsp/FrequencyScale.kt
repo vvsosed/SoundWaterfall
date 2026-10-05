@@ -28,6 +28,24 @@ class FrequencyScale(val sampleRate: Int, val binCount: Int) {
     fun xOf(frequency: Float, widthPx: Int): Float =
         if (widthPx <= 0) 0f else frequency / nyquist * widthPx
 
+    /**
+     * Allocation-free variant for the render path: fills [out] with the same
+     * values [gridlineFrequencies] would return and gives back how many were
+     * written, truncating rather than overrunning. Spec §6.2 requires onDraw to
+     * allocate nothing, and the List variant builds an ArrayList and boxes every
+     * element.
+     */
+    fun gridlineFrequenciesInto(stepHz: Int, out: IntArray): Int {
+        require(stepHz > 0) { "stepHz must be positive, was $stepHz" }
+        var n = 0
+        var f = 0
+        while (f <= nyquist && n < out.size) {
+            out[n++] = f
+            f += stepHz
+        }
+        return n
+    }
+
     /** Gridline frequencies from DC up to and including Nyquist where it lands on a step. */
     fun gridlineFrequencies(stepHz: Int): List<Int> {
         require(stepHz > 0) { "stepHz must be positive, was $stepHz" }

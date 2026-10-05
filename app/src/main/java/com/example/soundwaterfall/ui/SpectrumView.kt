@@ -60,12 +60,22 @@ class SpectrumView @JvmOverloads constructor(
     /** Publish count at the last requested redraw; -1 forces the first one. */
     private var lastDrawnPublishCount = -1L
 
+    // Spec §6.2 requires onDraw to allocate nothing. Gridline positions and
+    // label strings change only when the scale, the size or dbFloor changes, so
+    // they are computed once there and only read while drawing.
+    private val gridHz = IntArray(MAX_GRIDLINES)
+    private var gridCount = 0
+    private val gridX = FloatArray(MAX_GRIDLINES)
+    private var dbLabels: Array<String> = emptyArray()
+    private var dbLabelY = FloatArray(0)
+
     private var bins: FloatArray = FloatArray(0)
     private var columns: FloatArray = FloatArray(0)
 
     var dbFloor: Float = AnalyzerSettings.DEFAULT.dbFloor
         set(value) {
             field = value
+            rebuildGrid()
             invalidate()
         }
 
@@ -75,6 +85,7 @@ class SpectrumView @JvmOverloads constructor(
         this.scale = scale
         if (bins.size != snapshot.binCount) bins = FloatArray(snapshot.binCount)
         lastDrawnPublishCount = -1L
+        rebuildGrid()
         invalidate()
     }
 
@@ -97,6 +108,28 @@ class SpectrumView @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         if (w > 0 && columns.size != w) columns = FloatArray(w)
+        rebuildGrid()
+    }
+
+    /** Recomputes everything the grid needs, so onDraw only reads. */
+    private fun rebuildGrid() {
+        val freq = scale
+        gridCount = if (freq == null) 0 else freq.gridlineFrequenciesInto(GRID_STEP_HZ, gridHz)
+        if (freq != null) {
+            for (i in 0 until gridCount) gridX[i] = freq.xOf(gridHz[i].toFloat(), width)
+        }
+
+        val step = SpectrumGeometry.gridlineStepDb(dbFloor)
+        val count = (-dbFloor / step).toInt() + 1
+        if (dbLabels.size != count) {
+            dbLabels = Array(count) { "" }
+            dbLabelY = FloatArray(count)
+        }
+        for (i in 0 until count) {
+            val db = -i * step
+            dbLabels[i] = if (db == 0) "0 dBFS" else db.toString()
+            dbLabelY[i] = SpectrumGeometry.dbToY(db.toFloat(), dbFloor, height)
+        }
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -132,36 +165,26 @@ class SpectrumView @JvmOverloads constructor(
         canvas.drawPath(tracePath, tracePaint)
     }
 
+    /** Reads only precomputed state; allocates nothing (spec §6.2). */
     private fun drawGrid(canvas: Canvas, w: Int, h: Int) {
-        val step = SpectrumGeometry.gridlineStepDb(dbFloor)
-        var db = 0
-        while (db >= dbFloor.toInt()) {
-            val y = SpectrumGeometry.dbToY(db.toFloat(), dbFloor, h)
+        val inset = LABEL_INSET * resources.displayMetrics.density
+        for (i in dbLabels.indices) {
+            val y = dbLabelY[i]
             canvas.drawLine(0f, y, w.toFloat(), y, gridPaint)
-            if (db != 0) {
-                canvas.drawText("$db", LABEL_INSET * resources.displayMetrics.density, y - 2f, labelPaint)
-            } else {
-                canvas.drawText(
-                    "0 dBFS",
-                    LABEL_INSET * resources.displayMetrics.density,
-                    labelPaint.textSize,
-                    labelPaint,
-                )
-            }
-            db -= step
+            val ty = if (i == 0) labelPaint.textSize else y - 2f
+            canvas.drawText(dbLabels[i], inset, ty, labelPaint)
         }
-
-        scale?.let { freq ->
-            for (f in freq.gridlineFrequencies(GRID_STEP_HZ)) {
-                if (f == 0) continue
-                val x = freq.xOf(f.toFloat(), w)
-                canvas.drawLine(x, 0f, x, h.toFloat(), gridPaint)
-            }
+        for (i in 0 until gridCount) {
+            if (gridHz[i] == 0) continue
+            canvas.drawLine(gridX[i], 0f, gridX[i], h.toFloat(), gridPaint)
         }
     }
 
     private companion object {
         const val GRID_STEP_HZ = 4000
         const val LABEL_INSET = 3f
+
+        /** 0 Hz through 24 kHz at 4 kHz steps is 7; a little headroom. */
+        const val MAX_GRIDLINES = 16
     }
 }

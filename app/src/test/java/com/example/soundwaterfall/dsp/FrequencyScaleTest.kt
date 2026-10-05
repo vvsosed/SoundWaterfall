@@ -65,6 +65,38 @@ class FrequencyScaleTest {
         assertEquals(0f, s.xOf(12000f, 0), 1e-6f)
     }
 
+    /**
+     * Spec §6.2: "onDraw allocates nothing". gridlineFrequencies() builds an
+     * ArrayList and boxes every element, so the views need a variant that fills
+     * a buffer they own and allocated once.
+     */
+    @Test
+    fun gridlinesCanBeWrittenIntoACallerOwnedBufferWithoutAllocating() {
+        val s = FrequencyScale(48000, 1025)
+        val buf = IntArray(16)
+        val n = s.gridlineFrequenciesInto(4000, buf)
+        assertEquals(7, n)
+        assertEquals(listOf(0, 4000, 8000, 12000, 16000, 20000, 24000), buf.take(n))
+    }
+
+    @Test
+    fun gridlineBufferFillIsTruncatedRatherThanOverrun() {
+        val s = FrequencyScale(48000, 1025)
+        val tiny = IntArray(3)
+        assertEquals(3, s.gridlineFrequenciesInto(4000, tiny))
+        assertEquals(listOf(0, 4000, 8000), tiny.toList())
+    }
+
+    @Test
+    fun gridlineBufferVariantAgreesWithTheListVariant() {
+        for (rate in intArrayOf(48000, 44100)) {
+            val s = FrequencyScale(rate, 1025)
+            val buf = IntArray(32)
+            val n = s.gridlineFrequenciesInto(4000, buf)
+            assertEquals(s.gridlineFrequencies(4000), buf.take(n))
+        }
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun rejectsNonPositiveSampleRate() {
         FrequencyScale(0, 1025)

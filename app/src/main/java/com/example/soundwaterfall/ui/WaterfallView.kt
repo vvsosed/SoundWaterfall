@@ -10,6 +10,7 @@ import android.view.View
 import com.example.soundwaterfall.dsp.BinReducer
 import com.example.soundwaterfall.dsp.ColorMap
 import com.example.soundwaterfall.dsp.WaterfallBuffer
+import com.example.soundwaterfall.dsp.WaterfallUpload
 
 /**
  * The scrolling spectrogram (spec §6.3).
@@ -112,26 +113,31 @@ class WaterfallView @JvmOverloads constructor(
         val w = buffer.width
         val h = buffer.height
 
-        // One volatile read; both slices must agree on the same split point.
+        // Sample the counter on BOTH sides of the newestRow read. A tear between
+        // them would anchor the upload span at the old index while sizing it
+        // from the new count, skipping exactly the newest rows and leaving them
+        // stale for a full screen of scroll.
+        val rowsBefore = buffer.rowsAppended
         val newest = buffer.newestRow
+        val rowsAfter = buffer.rowsAppended
         val topHeight = h - newest
 
         // Upload only the rows that changed. A full 720x470 upload is ~1.35 MB;
         // at 47 rows/s only a handful of rows are new per draw.
-        val rows = buffer.rowsAppended
-        val added = rows - uploadedRowCount
-        if (uploadedRowCount < 0L || added < 0L || added >= h) {
+        val plan = WaterfallUpload.planValidated(newest, rowsBefore, rowsAfter, uploadedRowCount, h)
+        if (plan.full) {
             bmp.setPixels(buffer.pixels, 0, w, 0, 0, w, h)
-        } else if (added > 0L) {
-            // Rows are written with a DECREASING index, so the new ones occupy
-            // newest, newest+1, ... newest+added-1, wrapping once at the end.
-            val span = added.toInt()
-            val head = minOf(span, h - newest)
-            bmp.setPixels(buffer.pixels, newest * w, w, 0, newest, w, head)
-            val tail = span - head
-            if (tail > 0) bmp.setPixels(buffer.pixels, 0, w, 0, 0, w, tail)
+        } else {
+            if (plan.headCount > 0) {
+                bmp.setPixels(
+                    buffer.pixels, plan.headStart * w, w, 0, plan.headStart, w, plan.headCount,
+                )
+            }
+            if (plan.tailCount > 0) {
+                bmp.setPixels(buffer.pixels, 0, w, 0, 0, w, plan.tailCount)
+            }
         }
-        uploadedRowCount = rows
+        uploadedRowCount = rowsAfter
 
         if (topHeight > 0) {
             srcRect.set(0, newest, w, h)

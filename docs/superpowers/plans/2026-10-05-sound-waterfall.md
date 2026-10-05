@@ -38,6 +38,11 @@ Five conditions the spec implies that no task's happy-path tests would exercise.
 
 ### Task 0: De-risk JTransforms on Android — RESULT: confirmed
 
+> **SUPERSEDED BY TASK 8.** JTransforms was removed during Task 8 and replaced by a
+> hand-written `Radix2FftEngine`. The decision below ("proceed with JTransforms") is
+> no longer in force; spec §4's reference to `JTransformsFftEngine` is likewise stale.
+> See the Task 8 ruling in the ledger and §7 of the validation record for the grounds.
+
 **Result:** PASS on the Lenovo A6010, Android 5.0.2 / **API 21** (`tests="1" failures="0" errors="0"`); JTransforms dexes, class-loads and computes correctly, with the peak at bin 43 and 0 dBFS as predicted. Also PASS on the host JVM (OpenJDK 25). **API 28+ enforcement was NOT tested on-device** — see the ruling in Step 5. Decision: proceed with JTransforms; `JTransformsFftEngine` requires `DoubleFFT_1D(size.toLong())` because the constructor takes a `long`.
 
 Spec §11. This task writes **no production code**. It answers one question — does JTransforms run on Android — and its artifacts are deleted at the end.

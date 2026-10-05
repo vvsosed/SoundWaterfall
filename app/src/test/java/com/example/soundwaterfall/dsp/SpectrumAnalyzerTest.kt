@@ -168,6 +168,25 @@ class SpectrumAnalyzerTest {
         assertEquals(0.0f, out[128], 0.1f)
     }
 
+    /**
+     * The AudioRecord buffer is sized once at open() and cannot be resized, so
+     * it must cover the largest hop the user can later select. Sizing it for the
+     * initial N=2048 leaves only two hops of margin at N=4096 instead of the
+     * four spec §5.1 requires, and an overrun silently drops samples — which
+     * compresses the waterfall's time axis, the one failure the two-thread
+     * architecture exists to prevent.
+     */
+    @Test
+    fun maxHopCoversTheLargestSelectableFftSize() {
+        assertEquals(AnalyzerSettings.FFT_SIZES.max() / 2, AnalyzerSettings.MAX_HOP)
+        for (size in AnalyzerSettings.FFT_SIZES) {
+            assertTrue(
+                "MAX_HOP must cover N=$size",
+                AnalyzerSettings.MAX_HOP >= AnalyzerSettings(size, WindowFunction.HANN, -90f).hop,
+            )
+        }
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun rejectsOutputArrayOfTheWrongLength() {
         val a = analyzer(1024, WindowFunction.HANN)

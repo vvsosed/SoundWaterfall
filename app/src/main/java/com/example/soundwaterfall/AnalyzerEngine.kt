@@ -62,17 +62,29 @@ class AnalyzerEngine(
         thread = null
     }
 
+    /**
+     * Wraps the whole audio-thread body. Without this, anything thrown here —
+     * AudioRecord raising IllegalStateException, a require() tripping after a
+     * pipeline rebuild, an OOM allocating an N=4096 buffer — is an uncaught
+     * exception, which on Android kills the process. Spec §8 defines a
+     * user-visible Retry panel for every failure it lists, and a crash dialog
+     * is not that panel.
+     */
     private fun loop() {
-        when (val result = openSource()) {
-            is SourceResult.Failed -> sink.onError(result.reason)
-            is SourceResult.Ok -> {
-                val source = result.source
-                try {
-                    pump(source)
-                } finally {
-                    source.close()
+        try {
+            when (val result = openSource()) {
+                is SourceResult.Failed -> sink.onError(result.reason)
+                is SourceResult.Ok -> {
+                    val source = result.source
+                    try {
+                        pump(source)
+                    } finally {
+                        source.close()
+                    }
                 }
             }
+        } catch (t: Throwable) {
+            sink.onError(t.message ?: t.toString())
         }
     }
 

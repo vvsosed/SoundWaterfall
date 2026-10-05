@@ -1,5 +1,7 @@
 package com.example.soundwaterfall.dsp
 
+import java.util.concurrent.atomic.AtomicLong
+
 /**
  * The waterfall's pixel history, as a single-producer / single-consumer ring
  * (spec §3.1).
@@ -35,10 +37,16 @@ class WaterfallBuffer(
      * Monotonic count of rows written, so the renderer can skip a vsync when
      * nothing new has arrived. Measured on the API 21 device: blitting on every
      * vsync regardless put 100% of frames over the 16.7 ms budget.
+     *
+     * Atomic rather than merely volatile because [clear] is a SECOND writer, on
+     * the main thread: a plain `+=` there races the audio thread's increment,
+     * and a lost update would stop the renderer ever seeing the full-upload
+     * trigger, leaving rows colourised under the previous dB floor on screen —
+     * the silent mixing of two mappings that spec §6.5 forbids.
      */
-    @Volatile
-    var rowsAppended: Long = 0
-        private set
+    private val rowCounter = AtomicLong(0)
+
+    val rowsAppended: Long get() = rowCounter.get()
 
     /** Rows from [newestRow] to the end of the array, drawn at destination y = 0. */
     val topSliceHeight: Int get() = height - newestRow
@@ -59,14 +67,19 @@ class WaterfallBuffer(
         }
         // Publish only once the row is complete.
         newestRow = row
-        rowsAppended++
+        rowCounter.incrementAndGet()
     }
 
+    /**
+     * Called on the main thread while the audio thread may be inside
+     * [appendRow]. The counter is advanced by a full screen — atomically — so a
+     * renderer doing delta uploads sees more new rows than it has height for and
+     * falls back to a full upload, which is what guarantees no row survives the
+     * clear still coloured by the old dB floor.
+     */
     fun clear() {
         pixels.fill(colorMap.floorColor)
         newestRow = 0
-        // Advanced by a full screen so a renderer doing delta uploads sees more
-        // new rows than it has height for and falls back to a full upload.
-        rowsAppended += height
+        rowCounter.addAndGet(height.toLong())
     }
 }

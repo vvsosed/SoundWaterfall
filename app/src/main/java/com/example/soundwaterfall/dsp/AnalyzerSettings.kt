@@ -27,6 +27,14 @@ data class AnalyzerSettings(
         const val DB_FLOOR_MAX = -40f
         const val DB_FLOOR_STEP = 10f
 
+        /**
+         * The largest hop any selectable FFT size can produce. The AudioRecord
+         * buffer is sized once at open() and cannot be resized afterwards, so it
+         * must be sized for this rather than for whichever size happens to be
+         * selected at startup (spec §5.1).
+         */
+        val MAX_HOP = FFT_SIZES.max() / 2
+
         val DEFAULT = AnalyzerSettings(
             fftSize = 2048,
             window = WindowFunction.HANN,

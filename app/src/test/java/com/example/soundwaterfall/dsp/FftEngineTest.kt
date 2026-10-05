@@ -62,8 +62,8 @@ class FftEngineTest {
     }
 
     /**
-     * The Nyquist bin is the one most likely to be mis-unpacked, because the
-     * library stores Re[N/2] in work[1] rather than at the end of the array.
+     * The Nyquist bin is the one most likely to be mis-unpacked by any engine
+     * behind this interface, so it gets its own test regardless of backend.
      */
     @Test
     fun nyquistGoesIntoTheLastBin() {

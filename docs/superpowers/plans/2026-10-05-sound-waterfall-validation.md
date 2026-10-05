@@ -41,7 +41,34 @@ the janky count below is computed as frames exceeding the 16.7 ms budget.
 | + spectrum skip | 2048 | 17.1 | 24.1 | 25.0 | 52% |
 | + spectrum skip | 4096 | 17.7 | 23.4 | 25.4 | 76% |
 
-**Threshold (janky < 10%, p95 < 16 ms): NOT MET.**
+**Threshold (janky < 10%, p95 < 16 ms): NOT MET**, but the median frame is now under
+budget. Two further rounds followed the code review:
+
+| Build | N | p50 | p90 | p95 | > 16.7 ms |
+| --- | --- | --- | --- | --- | --- |
+| `drawLines` experiment | 1024 | 23.7 | 26.3 | 27.0 | 100% |
+| `drawLines` experiment | 2048 | 23.4 | 25.4 | 26.7 | 99% |
+| `drawLines` experiment | 4096 | 18.3 | 21.1 | 21.8 | 57% |
+| **after review fixes** | **2048** | **15.0** | 22.7 | 24.4 | **39%** |
+| **after review fixes** | **4096** | **16.2** | 22.4 | 26.4 | **46%** |
+
+**The `drawLines` experiment was run and refuted.** Spec §6.2 prescribes "a preallocated
+`FloatArray` of segment coordinates … handed to `Canvas.drawLines`", and the plan deviated
+to two `Path` objects without measuring the alternative. The code review was right that
+this had to be tested before accepting a failed criterion. Tested: `drawLines` is
+**substantially worse** — p50 23.4 vs 17.1 ms and 99% vs 52% janky at N=2048. Drawing the
+translucent fill as one vertical segment per column is ~1440 primitives per frame against
+two batched path draws, and HWUI handles the paths better. The `Path` implementation was
+kept and this measurement is the evidence for it. With the cheapest available lever now
+ruled out rather than merely untried, the recommendation to accept current performance is
+materially stronger than it was.
+
+**Removing the per-frame allocations was worth real milliseconds.** The review found that
+`SpectrumView.drawGrid` allocated an `ArrayList` with boxed `Integer`s plus a `String` per
+gridline on every frame, against spec §6.2's "onDraw allocates nothing". Caching the
+gridline positions and label strings took p50 from 17.1 to **15.0 ms** at N=2048 and janky
+frames from 52% to 39% — confirming those allocations were causing GC pauses inside the
+16.7 ms budget, exactly as the review predicted.
 
 ## 2. CPU
 
@@ -109,7 +136,7 @@ device class and leave the renderer as it is.**
 | 2 | Switching windows changes leakage while the peak stays at 0 dBFS | **PARTIAL** — on device, selecting Blackman visibly collapsed the skirt toward the floor. The "peak stays at 0 dBFS" half is proven by `SpectrumAnalyzerTest` across 4 windows × 3 FFT sizes, not on device, for the same reason as #1 |
 | 3 | FFT size trades frequency resolution against scroll speed | **PASS** — N=4096 visibly narrowed the peak and cleared the history |
 | 4 | The active audio source is always visible | **PASS** — chip reads `VOICE_RECOGNITION · 48000 Hz` |
-| 5 | Rendering keeps up at 60 fps, no allocation in `onDraw` | **FAIL on frame rate** (see §1 and §4); no allocation in `onDraw` holds by construction |
+| 5 | Rendering keeps up at 60 fps, no allocation in `onDraw` | **FAIL on frame rate**, though the median frame is now under budget (p50 15.0 ms at N=2048; see §1). The no-allocation half was **initially false** — `drawGrid` allocated ~17 objects per frame — and is true now that the gridlines and labels are cached |
 | 6 | The `dsp` package is fully unit-tested on the JVM | **PASS** — 110 unit tests green; `grep "^import android"` over `dsp/` returns nothing |
 
 ## 7. Release build
@@ -125,6 +152,39 @@ Task 8 decision to drop JTransforms: with JLargeArrays on the classpath R8 fails
 on `sun.misc.Cleaner` and `com.sun.xml.internal.ws.encoding.soap.SerializationException`,
 neither of which exists on Android, and the release build type has had `optimization`
 enabled since the project template was generated.
+
+## 7b. Fixes applied after the whole-branch code review
+
+A fresh reviewer found seven Important issues; all were fixed in one pass, each with a test
+that failed first where a test was meaningful.
+
+1. **`SpectrumView.onDraw` allocated every frame** (spec §6.2 violation). Gridline
+   positions and dB label strings are now computed in `bind`/`onSizeChanged`/the `dbFloor`
+   setter and only read while drawing; `FrequencyScale.gridlineFrequenciesInto` fills a
+   caller-owned `IntArray`. Measured gain above.
+2. **The delta upload read `newestRow` and `rowsAppended` as two separate volatile reads.**
+   A tear anchored the span at the old index while sizing it from the new count, skipping
+   exactly the newest rows and leaving them stale for a full screen of scroll — the
+   waterfall misreporting *when* something happened, which spec §3.1 names as the one thing
+   that must not occur. The arithmetic is now in `WaterfallUpload`, unit-tested including
+   the torn-pair case, and the renderer samples the counter on both sides of the index read
+   and falls back to a full upload if it moved.
+3. **`WaterfallBuffer.clear()` was a second, unsynchronised writer** from the main thread,
+   and `rowsAppended += height` was a lost-update race against the audio thread's
+   increment. A lost update would leave rows coloured under the previous dB floor on
+   screen, which spec §6.5 forbids. The counter is now an `AtomicLong`.
+4. **No uncaught-exception boundary on the audio thread** — any throw killed the process
+   instead of reaching spec §8's Retry panel. `loop()` now catches `Throwable` and reports
+   it through the sink; covered by a test with a source that throws.
+5. **The `AudioRecord` buffer was sized from the initial hop**, so selecting N=4096 later
+   left two hops of margin instead of the four spec §5.1 requires, risking silent overruns
+   that would compress the time axis. It is now sized from `AnalyzerSettings.MAX_HOP`.
+6. **The `drawLines` renderer was never tried.** Run and refuted; see §1.
+7. **Documentation stated a withdrawn justification.** `Radix2FftEngine`'s KDoc claimed the
+   JTransforms multidex APK "could not load its own classes", which was a misdiagnosis
+   (stale test APK after a USB disconnect) retracted in the ledger but never propagated to
+   the source. Rewritten to the three grounds that survive scrutiny, with the withdrawal
+   stated; the plan's Task 0 heading now carries a SUPERSEDED-BY-TASK-8 banner.
 
 ## 8. Device reliability note
 

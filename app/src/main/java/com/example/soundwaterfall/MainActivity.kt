@@ -194,7 +194,9 @@ class MainActivity : AppCompatActivity(), AnalyzerEngine.Sink {
         if (engine != null) return
         val capture = AudioCapture(this)
         val started = AnalyzerEngine(
-            openSource = { capture.open(settings.hop) },
+            // Sized for the largest selectable hop, not the current one: the
+            // AudioRecord buffer cannot be resized when the user picks N=4096.
+            openSource = { capture.open(AnalyzerSettings.MAX_HOP) },
             sink = this,
             initialSettings = settings,
         )
