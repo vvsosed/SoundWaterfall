@@ -43,6 +43,86 @@ magnitudes are normalised by `(N/2) × coherentGain`, so a full-scale sine reads
 every window and every FFT size. Otherwise switching window would move the whole display and
 you could not separate the window's real effect from a change in gain.
 
+The three are orthogonal: FFT size changes what is measured, window changes how cleanly it
+is resolved, and dB floor changes only how it is displayed. Only the first two alter the
+numbers at all.
+
+### FFT size — 1024 / 2048 / 4096
+
+The time-versus-frequency trade-off, and the only control that changes the shape of the data
+rather than its presentation.
+
+| N | Bin width | One frame covers | Bins | Rows/sec |
+| --- | --- | --- | --- | --- |
+| 1024 | 46.9 Hz | 21.3 ms | 513 | 94 |
+| 2048 | 23.4 Hz | 42.7 ms | 1025 | 47 |
+| 4096 | 11.7 Hz | 85.3 ms | 2049 | 23 |
+
+Bin width is `sampleRate / N`, so doubling N halves it: two tones 20 Hz apart are one blurred
+peak at 1024 and cleanly separated at 4096. You pay in time — one frame at 4096 spans 85 ms
+and everything inside those 85 ms is smeared uniformly across the row, so a finger snap is a
+thin bright line at 1024 and a fat smudge at 4096.
+
+The row rate follows from `AnalyzerSettings.hop`, fixed at `fftSize / 2` for 50% overlap:
+rows per second is `sampleRate / hop`. The figures above assume the granted 48 kHz; on the
+44.1 kHz fallback they become 86 / 43 / 22.
+
+Changing N is the one case where clearing the history is structural rather than cosmetic. It
+is the only branch in `AnalyzerEngine.pump` that rebuilds the pipeline — new
+`Radix2FftEngine`, `FrameAssembler`, `FrequencyScale` and buffers — and the new scale has a
+different bin count, so `onPipelineChanged` fires and the waterfall is cleared. It has to be:
+rows already in the buffer each represent a different slice of time than the incoming ones,
+and stacking 21 ms rows directly above 85 ms rows would leave the vertical axis silently no
+longer meaning time.
+
+### Window — Rectangular / Hann / Hamming / Blackman
+
+The FFT treats its N samples as one period of an infinitely repeating signal. A tone that is
+not exactly on a bin centre does not fit a whole number of cycles into the frame, so the wrap
+produces a step discontinuity whose energy sprays across every bin. Those are the skirts. A
+window tapers the frame smoothly to zero at both ends so the discontinuity never arises. The
+trade is always the same: suppressing the sidelobes widens the main lobe.
+
+| Window | Coherent gain | 1st sidelobe | Main lobe | Good for |
+| --- | --- | --- | --- | --- |
+| Rectangular | 1.00 | −13 dB | 2 bins | Maximum resolution; already-periodic signals |
+| Hann | 0.50 | −31 dB | 4 bins | General purpose — the default |
+| Hamming | 0.54 | −43 dB | 4 bins | Lowest nearby sidelobe, poor far roll-off |
+| Blackman | 0.42 | −58 dB | 6 bins | A weak tone sitting beside a strong one |
+
+The coherent gains are the values in `WindowFunction`; the sidelobe and main-lobe figures are
+the standard properties of these windows.
+
+History is kept because a window change takes the `else` branch in `pump` — just
+`analyzer.setWindow()`, no rebuild, bin count unchanged, frequency axis identical. That is
+what makes the switch legible: a horizontal seam appears in the waterfall where the skirts
+collapse, with the peak running straight through it. Clearing would destroy the comparison
+that is the whole demonstration.
+
+### dB floor — −120 … −40
+
+Sets the bottom of the spectrum's y axis and, more visibly, the waterfall's colour range.
+`ColorMap.color` computes `range = -dbFloor` and `index = (db - dbFloor) / range × (SIZE-1)`,
+mapping the floor onto the darkest Inferno stop and 0 dBFS onto the brightest. It is
+effectively a contrast control:
+
+- **−40** squeezes the whole palette into the top 40 dB: anything quieter is black, and loud
+  content blooms and saturates.
+- **−120** spreads it over 120 dB: the room's noise floor becomes visible texture, but the
+  signal itself flattens into mid-tones.
+- **−90** is the default, and the slider steps in 10 dB.
+
+It applies on release rather than during the drag. `addOnChangeListener` updates only the
+numeric label live; `onStopTrackingTouch` commits the setting. The split exists because
+committing clears the waterfall, and applying continuously would wipe the history on every
+pixel of slider movement.
+
+That clearing follows from the threading design. The waterfall buffer stores *colours*, not
+dB values — `WaterfallView.submitFrame` colourises each row on the audio thread as it arrives
+— so once a row is stored there is no dB left to re-map against a new floor. Old rows would
+be displaying a scale that no longer exists. Keeping them would be cheaper and would look
+fine; it would just be wrong.
+
 ## Requirements
 
 - Android **5.0 (API 21)** or newer
