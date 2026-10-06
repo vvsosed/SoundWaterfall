@@ -109,3 +109,7 @@ have that property and invents contour bands that are not in the signal.
 | [`docs/superpowers/specs/`](docs/superpowers/specs/) | Design spec — the authority on intended behaviour, with the reasoning behind each choice |
 | [`docs/superpowers/plans/`](docs/superpowers/plans/) | Implementation plan, device validation record (frame timings, failure modes), and a decision log of every ruling made while building it |
 | [`CLAUDE.md`](CLAUDE.md) | Orientation for AI coding agents: commands, architecture, and the invariants that are easy to break |
+
+## License
+
+[MIT](LICENSE).
